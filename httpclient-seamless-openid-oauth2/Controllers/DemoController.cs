@@ -1,5 +1,5 @@
-using System.Net.Http;
 using System.Threading.Tasks;
+using httpclient_seamless_openid_oauth2.Clients;
 using Microsoft.AspNetCore.Mvc;
 
 namespace httpclient_seamless_openid_oauth2.Controllers
@@ -7,17 +7,17 @@ namespace httpclient_seamless_openid_oauth2.Controllers
     [Route("[controller]")]
     public class DemoController : ControllerBase
     {
-        private readonly HttpClient _httpClient;
+        private readonly IDuendeClient _duendeClient;
 
-        public DemoController(IHttpClientFactory httpClientFactory)
+        public DemoController(IDuendeClient duendeClient)
         {
-            _httpClient = httpClientFactory.CreateClient("demo");
+            _duendeClient = duendeClient;
         }
 
         [HttpGet]
         public async Task<IActionResult> Get()
         {
-            var response = await _httpClient.GetAsync("test");
+            var response = await _duendeClient.GetTest();
             var responseContent = response.Content.ReadAsStringAsync();
 
             if (!response.IsSuccessStatusCode)

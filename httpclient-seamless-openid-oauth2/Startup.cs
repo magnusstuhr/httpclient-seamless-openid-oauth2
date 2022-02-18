@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Net;
 using System.Net.Http;
+using httpclient_seamless_openid_oauth2.Clients;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
@@ -56,11 +57,11 @@ namespace httpclient_seamless_openid_oauth2
                 .ConfigureBackchannelHttpClient()
                 .AddTransientHttpErrorPolicy(CreateRetryPolicy);
 
-            services.AddClientAccessTokenHttpClient("demo",
-                    configureClient: client =>
-                    {
-                        client.BaseAddress = new Uri("https://demo.duendesoftware.com/api/");
-                    })
+            services.AddHttpClient<IDuendeClient, DuendeClient>(client =>
+                {
+                    client.BaseAddress = new Uri("https://demo.duendesoftware.com/api/");
+                })
+                .AddClientAccessTokenHandler()
                 .AddPolicyHandler(GetDefaultRetryPolicy())
                 .AddPolicyHandler(GetDefaultCircuitBreakerPolicy());
         }
