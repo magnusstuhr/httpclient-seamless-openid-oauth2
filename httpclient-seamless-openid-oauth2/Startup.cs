@@ -10,6 +10,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.OpenApi.Models;
 using Polly;
 using Polly.Extensions.Http;
 using Polly.Retry;
@@ -29,9 +30,50 @@ namespace httpclient_seamless_openid_oauth2
         {
             services.AddControllers();
 
-            const string openIdConnectAuthenticationScheme = OpenIdConnectDefaults.AuthenticationScheme;
+            services.AddEndpointsApiExplorer();
 
             var openIdConfig = _configuration.GetSection("Demo");
+            var authority = $"{openIdConfig["Authority"]}";
+            var tokenEndpoint = $"{authority}{openIdConfig["TokenEndpointPath"]}";
+
+            services.AddSwaggerGen(swaggerGenOptions =>
+            {
+                swaggerGenOptions.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
+                {
+                    Type = SecuritySchemeType.OAuth2,
+                    Flows = new OpenApiOAuthFlows
+                    {
+                        ClientCredentials = new OpenApiOAuthFlow
+                        {
+                            TokenUrl = new Uri(tokenEndpoint),
+                            Scopes = new Dictionary<string, string>
+                            {
+                                { "api", "Access to all API endpoints." }
+                            },
+                        },
+                    }
+                });
+                swaggerGenOptions.AddSecurityRequirement(new OpenApiSecurityRequirement()
+                {
+                    {
+                        new OpenApiSecurityScheme
+                        {
+                            Reference = new OpenApiReference
+                            {
+                                Type = ReferenceType.SecurityScheme,
+                                Id = "oauth2"
+                            },
+                            Scheme = "oauth2",
+                            Name = "oauth2",
+                            In = ParameterLocation.Header
+                        },
+                        new List<string>()
+                    }
+                });
+            });
+
+            const string openIdConnectAuthenticationScheme = OpenIdConnectDefaults.AuthenticationScheme;
+
 
             services.AddAuthentication(options =>
                 {
@@ -39,12 +81,10 @@ namespace httpclient_seamless_openid_oauth2
                 })
                 .AddOpenIdConnect(openIdConnectAuthenticationScheme, options =>
                 {
-                    var authority = $"{openIdConfig["Authority"]}";
                     options.Authority = authority;
-
                     var openIdConnectConfiguration = new OpenIdConnectConfiguration
                     {
-                        TokenEndpoint = $"{authority}{openIdConfig["TokenEndpointPath"]}"
+                        TokenEndpoint = tokenEndpoint
                     };
 
                     options.Configuration = openIdConnectConfiguration;
@@ -81,10 +121,7 @@ namespace httpclient_seamless_openid_oauth2
                     });
             });
 
-            services.AddClientAccessTokenManagement(options =>
-                {
-                    options.DefaultClient.Scope = openIdConfig["Scope"];
-                })
+            services.AddClientAccessTokenManagement(options => { options.DefaultClient.Scope = openIdConfig["Scope"]; })
                 .ConfigureBackchannelHttpClient()
                 .AddTransientHttpErrorPolicy(CreateRetryPolicy);
 
@@ -103,6 +140,9 @@ namespace httpclient_seamless_openid_oauth2
             app.UseRouting();
             app.UseAuthorization();
             app.UseEndpoints(endpoints => { endpoints.MapControllers(); });
+
+            app.UseSwagger();
+            app.UseSwaggerUI();
         }
 
         private static IAsyncPolicy<HttpResponseMessage> GetDefaultRetryPolicy()
