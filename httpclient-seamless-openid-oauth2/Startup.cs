@@ -1,12 +1,15 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Net.Http;
 using httpclient_seamless_openid_oauth2.Clients;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Protocols.OpenIdConnect;
+using Microsoft.IdentityModel.Tokens;
 using Polly;
 using Polly.Extensions.Http;
 using Polly.Retry;
@@ -48,7 +51,35 @@ namespace httpclient_seamless_openid_oauth2
 
                     options.ClientId = openIdConfig["ClientId"];
                     options.ClientSecret = openIdConfig["ClientSecret"];
+                })
+                .AddJwtBearer(options =>
+                {
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ClockSkew = TimeSpan.Zero,
+                        ValidateAudience = false,
+                        ValidateIssuer = true,
+                        ValidateLifetime = true,
+                    };
+                    var authorizationConfig = _configuration.GetSection("Authorization");
+
+                    options.Authority = authorizationConfig["Authority"];
+                    options.Audience = authorizationConfig["Audience"];
+                    options.IncludeErrorDetails = true;
                 });
+
+            services.AddAuthorization(options =>
+            {
+                options.AddPolicy("authenticatedUser",
+                    builder =>
+                    {
+                        builder.AuthenticationSchemes = new List<string>
+                        {
+                            JwtBearerDefaults.AuthenticationScheme
+                        };
+                        builder.RequireAuthenticatedUser();
+                    });
+            });
 
             services.AddClientAccessTokenManagement(options =>
                 {

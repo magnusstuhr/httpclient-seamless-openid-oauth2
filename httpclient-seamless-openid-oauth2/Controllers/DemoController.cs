@@ -1,10 +1,12 @@
 using System.Threading.Tasks;
 using httpclient_seamless_openid_oauth2.Clients;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace httpclient_seamless_openid_oauth2.Controllers
 {
     [Route("[controller]")]
+    [Authorize("authenticatedUser")]
     public class DemoController : ControllerBase
     {
         private readonly IDuendeClient _duendeClient;
